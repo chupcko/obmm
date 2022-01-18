@@ -1,0 +1,6 @@
+-client: download fonts
+-client: implement all
+-general: made READ_ME.md
+-server: check JSON error
+-server: check existing of username from JWT in mongo
+-server: implement pem signing of JWT
