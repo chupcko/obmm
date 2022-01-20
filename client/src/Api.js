@@ -122,7 +122,7 @@ const ApiProvider = (props) => {
 
   const logOut = () => {
     setUsername(null);
-    removeJwt(null);
+    removeJwt();
     setAuthorized(false);
   };
 
