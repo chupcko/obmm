@@ -1,0 +1,79 @@
+https://developers.google.com/drive/api/v3/quickstart/js
+https://developers.google.com/drive/api/v3/about-sdk
+https://bytutorial.com/tutorials/google-api/introduction-to-google-drive-api-using-javascript
+
+
+var createFileWithJSONContent = function(name,data,callback) {
+  const boundary = '-------314159265358979323846';
+  const delimiter = "\r\n--" + boundary + "\r\n";
+  const close_delim = "\r\n--" + boundary + "--";
+
+  const contentType = 'application/json';
+
+  var metadata = {
+      'name': name,
+      'mimeType': contentType
+    };
+
+    var multipartRequestBody =
+        delimiter +
+        'Content-Type: application/json\r\n\r\n' +
+        JSON.stringify(metadata) +
+        delimiter +
+        'Content-Type: ' + contentType + '\r\n\r\n' +
+        data +
+        close_delim;
+
+    var request = gapi.client.request({
+        'path': '/upload/drive/v3/files',
+        'method': 'POST',
+        'params': {'uploadType': 'multipart'},
+        'headers': {
+          'Content-Type': 'multipart/related; boundary="' + boundary + '"'
+        },
+        'body': multipartRequestBody});
+    if (!callback) {
+      callback = function(file) {
+        console.log(file)
+      };
+    }
+    request.execute(callback);
+
+
+
+  this.saveFile = function(file, done) {
+    function addContent(fileId) {
+      return gapi.client.request({
+          path: '/upload/drive/v3/files/' + fileId,
+          method: 'PATCH',
+          params: {
+            uploadType: 'media'
+          },
+          body: file.content
+        })
+    }
+    var metadata = {
+      mimeType: 'application/vnd.google-apps.document',
+      name: file.name,
+      fields: 'id'
+    }
+    if (file.parents) {
+      metadata.parents = file.parents;
+    }
+
+    if (file.id) { //just update
+      addContent(file.id).then(function(resp) {
+        console.log('File just updated', resp.result);
+        done(resp.result);
+      })
+    } else { //create and update
+      gapi.client.drive.files.create({
+        resource: metadata
+      }).then(function(resp) {
+        addContent(resp.result.id).then(function(resp) {
+          console.log('created and added content', resp.result);
+          done(resp.result);
+        })
+      });
+    }
+  }

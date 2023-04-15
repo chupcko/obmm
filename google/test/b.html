@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <title>CHUPCKO</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <style type="text/css">/* <![CDATA[ */
+    /* ]]> */</style>
+    <script src="https://apis.google.com/js/api.js"></script>
+    <script type="text/javascript">/* <![CDATA[ */
+
+var CLIENT_ID = '350722106097-h6pdlmsniv5f9dpb0hpfqtdhdoomi4od.apps.googleusercontent.com';
+var API_KEY = 'AIzaSyAOqQHx5e1kWWtzhoEEJCExxwML9vsL3Jk';
+var DISCOVERY_DOCS = ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'];
+var SCOPES = 'https://www.googleapis.com/auth/drive.metadata.readonly https://www.googleapis.com/auth/drive.appfolder';
+
+function main() {
+  console.log('main');
+  gapi.load('client:auth2', init);
+}
+
+function init() {
+  gapi.client.init(
+    {
+      apiKey: API_KEY,
+      clientId: CLIENT_ID,
+      discoveryDocs: DISCOVERY_DOCS,
+      scope: SCOPES
+    }
+  ).then(
+    () => {
+      gapi.auth2.getAuthInstance().isSignedIn.listen(update);
+      update(gapi.auth2.getAuthInstance().isSignedIn.get());
+    }
+  );
+}
+
+function update(isSignedIn) {
+  console.log('updateSigninStatus', isSignedIn );
+}
+
+function signIn() {
+  gapi.auth2.getAuthInstance().signIn();
+}
+
+function signOut() {
+  gapi.auth2.getAuthInstance().signOut();
+}
+
+var ID = undefined;
+
+function list() {
+  gapi.client.drive.files.list(
+  {
+    fields: 'files(id, name)',
+    spaces: 'appDataFolder'
+  }).then(
+    (response) => {
+      console.log('list', response.result.files);
+      ID = response.result.files[0];
+      if(ID) {
+        ID = ID.id;
+      }
+      console.log('ID =', ID);
+    }
+  );
+}
+
+function create(name, content) {
+  gapi.client.drive.files.create({
+    resource: {
+      name: name,
+      parents: ['appDataFolder'],
+      mimeType: 'application/json'
+    },
+    fields: 'id'
+  }).execute(
+    (response, responseRaw) => {
+      console.log('create', name, response, responseRaw);
+    }
+  );
+}
+
+function ddelete(id) {
+  gapi.client.drive.files.delete({
+    fileId: id
+  }).execute(
+    (response, responseRaw) => {
+      console.log('delete', id, response, responseRaw);
+    }
+  );
+}
+
+function read(id) {
+  gapi.client.drive.files.get({
+    fileId: id,
+    alt: 'media'
+  }).then(
+    (reponse) => {
+      console.log('read', reponse);
+    }
+  );
+}
+
+function upload(id, content) {
+}
+
+    /* ]]> */</script>
+  </head>
+  <body onload="main();">
+    <button onclick="signIn();">signIn</button><br/>
+    <button onclick="signOut();">signOut</button><br/>
+    <button onclick="list();">list</button><br/>
+    <button onclick="create('abc');">create abc</button><br/>
+    <button onclick="create('pqr');">create pqr</button><br/>
+    <button onclick="create('xyz');">create xyz</button><br/>
+    <button onclick="if(ID) { ddelete(ID); }">delete ID</button><br/>
+    <button onclick="if(ID) { read(ID); }">read ID</button><br/>
+    <button onclick="if(ID) { upload(ID, 'chupcko'); }">upload ID</button><br/>
+  </body>
+</html>
+
+
+
+var createFileWithJSONContent = function(name,data,callback) {
+  const boundary = '-------314159265358979323846';
+  const delimiter = "\r\n--" + boundary + "\r\n";
+  const close_delim = "\r\n--" + boundary + "--";
+
+  const contentType = 'application/json';
+
+  var metadata = {
+      'name': name,
+      'mimeType': contentType
+    };
+
+    var multipartRequestBody =
+        delimiter +
+        'Content-Type: application/json\r\n\r\n' +
+        JSON.stringify(metadata) +
+        delimiter +
+        'Content-Type: ' + contentType + '\r\n\r\n' +
+        data +
+        close_delim;
+
+    var request = gapi.client.request({
+        'path': '/upload/drive/v3/files',
+        'method': 'POST',
+        'params': {'uploadType': 'multipart'},
+        'headers': {
+          'Content-Type': 'multipart/related; boundary="' + boundary + '"'
+        },
+        'body': multipartRequestBody});
+    if (!callback) {
+      callback = function(file) {
+        console.log(file)
+      };
+    }
+    request.execute(callback);
+
+
+
+  this.saveFile = function(file, done) {
+    function addContent(fileId) {
+      return gapi.client.request({
+          path: '/upload/drive/v3/files/' + fileId,
+          method: 'PATCH',
+          params: {
+            uploadType: 'media'
+          },
+          body: file.content
+        })
+    }
+    var metadata = {
+      mimeType: 'application/vnd.google-apps.document',
+      name: file.name,
+      fields: 'id'
+    }
+    if (file.parents) {
+      metadata.parents = file.parents;
+    }
+
+    if (file.id) { //just update
+      addContent(file.id).then(function(resp) {
+        console.log('File just updated', resp.result);
+        done(resp.result);
+      })
+    } else { //create and update
+      gapi.client.drive.files.create({
+        resource: metadata
+      }).then(function(resp) {
+        addContent(resp.result.id).then(function(resp) {
+          console.log('created and added content', resp.result);
+          done(resp.result);
+        })
+      });
+    }
+  }

@@ -1,0 +1,20 @@
+-OBM
+  -nauci gsi
+    -povezati gsi sa gapi
+  -logovanje
+    -login
+    -logout
+    -automatsko logovanje
+  -podaci
+    -hvatanje podataka
+    -kreiranje ako ga nema ili ako je pogresan format
+    -dodavanje linka
+    -brisanje linka
+    -menjanje linka
+    -rad sa tagovima
+  -prikaz
+    -prikaz svih linkova
+    -dodavanje linka
+    -brisanje linka
+    -editovanje linka
+    -rad sa tagovima
